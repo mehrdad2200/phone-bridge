@@ -1,0 +1,8 @@
+{
+  "name": "phone-bridge-page-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "jsdom tests for the phone remote web page",
+  "scripts": { "test": "python ../page/dump_page.py ./.out && node page_test.js ./.out" },
+  "devDependencies": { "jsdom": "^24.0.0" }
+}

@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""A tiny fake `adb` used by the test-suite and the screenshot generator.
+
+It understands just enough of adb to drive Phone Bridge without a real phone and
+logs every command it receives so tests can assert on them.
+
+Environment variables
+  FAKE_ADB_LOG     file that receives one line per command (default: ./fake_adb.log)
+  FAKE_ADB_SCREEN  PNG returned by `exec-out screencap -p`
+  FAKE_ADB_STATE   directory for tiny state flags (recording stopped, connected, ...)
+"""
+import os
+import sys
+import time
+
+LOG = os.environ.get("FAKE_ADB_LOG", "fake_adb.log")
+SCREEN = os.environ.get("FAKE_ADB_SCREEN", os.path.join(os.path.dirname(__file__), "..", "assets", "demo_screen.png"))
+STATE = os.environ.get("FAKE_ADB_STATE", os.path.dirname(LOG) or ".")
+
+
+def log(msg):
+    with open(LOG, "a", encoding="utf-8") as f:
+        f.write(msg + "\n")
+
+
+def flag(name):
+    return os.path.join(STATE, name)
+
+
+a = sys.argv[1:]
+if a[:1] == ["-s"]:
+    a = a[2:]
+if not a:
+    sys.exit(0)
+c = a[0]
+
+if c in ("start-server", "kill-server"):
+    sys.exit(0)
+if c == "devices":
+    print("List of devices attached\nDEMO0123456\tdevice")
+    sys.exit(0)
+if c == "connect":
+    print("connected to " + a[1])
+    sys.exit(0)
+if c == "mdns":
+    print("mdns daemon version [Openscreen discovery 0.0.0]" if a[1:2] == ["check"] else "List of discovered mdns services")
+    sys.exit(0)
+if c == "exec-out":
+    sys.stdout.buffer.write(open(SCREEN, "rb").read())
+    sys.exit(0)
+if c == "pull":
+    dest = a[2] if not os.path.isdir(a[2]) else os.path.join(a[2], os.path.basename(a[1]))
+    open(dest, "wb").write(b"FAKE-PULL")
+    log("PULL %s -> %s" % (a[1], a[2]))
+    print("1 file pulled")
+    sys.exit(0)
+if c == "push":
+    log("PUSH %s -> %s" % (a[1], a[2]))
+    print("1 file pushed. 1.0 MB/s")
+    sys.exit(0)
+if c == "install":
+    log("INSTALL " + a[-1])
+    print("Performing Streamed Install\nSuccess")
+    sys.exit(0)
+if c == "logcat":
+    for i in range(400):
+        print("%s/DemoTag(%d): message number %d" % ("VDIWEF"[i % 6], 1000 + i, i))
+        sys.stdout.flush()
+        time.sleep(0.03)
+    sys.exit(0)
+if c != "shell":
+    sys.exit(0)
+
+if len(a) == 1:                                    # persistent interactive shell: log every line
+    for line in sys.stdin:
+        log("SH> " + line.rstrip())
+    sys.exit(0)
+if a[1] == "wm":
+    print("Physical size: 1080x2400" if a[2] == "size" else "Physical density: 420")
+    sys.exit(0)
+if a[1] == "screenrecord":
+    log("RECORD " + " ".join(a[2:]))
+    for _ in range(600):
+        if os.path.exists(flag("stop_rec")):
+            break
+        time.sleep(0.05)
+    sys.exit(0)
+
+cmd = " ".join(a[1:])
+log("CMD " + cmd)
+if "echo model=" in cmd:
+    print("model=Demo Phone\nbrand=Acme\nandroid=14\nsdk=34\nabi=arm64-v8a\npatch=2026-09-05\nserial=DEMO0123456\nbuild=DEMO.231005.007")
+    print("Physical size: 1080x2400\nPhysical density: 420")
+    print("MemTotal:        5834272 kB\nMemAvailable:    2917136 kB")
+    print("==DF\n/dev/block/dm-9  113287356  45678912  67608444  41% /data")
+    print("==IP\n192.168.1.0/24 dev wlan0 proto kernel scope link src 192.168.1.50")
+    print("==BAT\nCurrent Battery Service state:\n  AC powered: false\n  USB powered: true\n  status: 2\n  level: 77\n  voltage: 4123\n  temperature: 301")
+elif cmd.startswith("dumpsys battery | grep"):
+    print("  status: 2\n  level: 77\n  temperature: 301\nMemTotal:        5834272 kB\nMemAvailable:    2917136 kB")
+elif cmd.startswith("ls -la"):
+    print("total 40\ndrwxrwx--x 2 root sdcard_rw 3452 2026-10-01 10:00 Download\ndrwxrwx--x 2 root sdcard_rw 3452 2026-10-02 11:30 DCIM\n"
+          "-rw-rw---- 1 root sdcard_rw 1234567 2026-10-03 09:15 report final.pdf\n-rw-rw---- 1 root sdcard_rw 2048 2026-10-04 08:00 notes.txt")
+elif cmd.startswith("pm list packages"):
+    print("package:com.example.notes\npackage:com.example.player\npackage:org.example.chat\npackage:net.example.maps")
+elif cmd.startswith("dumpsys package"):
+    print("    versionCode=2301 minSdk=24 targetSdk=34\n    versionName=10.5.2\n    firstInstallTime=2026-01-10 12:00:00\n    lastUpdateTime=2026-09-20 18:30:00")
+elif cmd.startswith("pm path"):
+    print("package:/data/app/~~x/com.example.notes-1/base.apk\npackage:/data/app/~~x/com.example.notes-1/split_config.arm64.apk")
+elif cmd.startswith("ping"):
+    print("PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.\n4 packets transmitted, 4 received, 0% packet loss\nrtt min/avg/max/mdev = 21.5/24.8/30.2/3.1 ms")
+elif cmd.startswith("ls -t /sdcard/DCIM/Camera"):
+    took = "keyevent 27" in open(LOG, encoding="utf-8").read()
+    print("IMG_20261029_130500_NEW.jpg" if took else "IMG_20261029_120000.jpg")
+elif cmd.startswith("pkill") or cmd.startswith("killall"):
+    open(flag("stop_rec"), "w").write("1")
+else:
+    print("ok")

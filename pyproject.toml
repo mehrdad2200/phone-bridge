@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phone-bridge"
+dynamic = ["version"]
+description = "Control your Android phone from your PC (mouse + keyboard over adb) and use your phone as a keyboard, trackpad and presenter remote for the PC. English + Persian UI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["android", "adb", "remote-control", "scrcpy-alternative", "pyqt6", "trackpad", "persian", "farsi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+    "Natural Language :: English",
+    "Natural Language :: Persian",
+]
+dependencies = ["PyQt6>=6.5", "pynput>=1.7.6"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.4", "opencv-python-headless>=4.8", "numpy>=1.24", "Pillow>=10.0"]
+
+[project.scripts]
+phone-bridge = "phone_bridge:main"
+
+[project.urls]
+Homepage = "https://github.com/YOUR_USERNAME/phone-bridge"
+Documentation = "https://github.com/YOUR_USERNAME/phone-bridge/tree/main/docs"
+Issues = "https://github.com/YOUR_USERNAME/phone-bridge/issues"
+Changelog = "https://github.com/YOUR_USERNAME/phone-bridge/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+py-modules = ["phone_bridge"]
+
+[tool.setuptools.dynamic]
+version = { attr = "phone_bridge.__version__" }
+
+[tool.ruff]
+line-length = 140
+target-version = "py310"
+extend-exclude = ["tests/page/node_modules", ".test-data"]
+
+[tool.ruff.lint]
+select = ["F", "E9"]          # real errors only (pyflakes + syntax); style is not enforced
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
